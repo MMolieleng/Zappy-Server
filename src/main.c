@@ -6,12 +6,13 @@
 /*   By: mmoliele <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2017/09/05 10:12:07 by mmoliele          #+#    #+#             */
-/*   Updated: 2017/09/05 14:58:28 by mmoliele         ###   ########.fr       */
+/*   Updated: 2017/09/05 17:18:01 by mmoliele         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <zappy.h>
 
+#define BUFF 1024
 #define MAX_CLIENTS 30
 
 void	update_maxsd(int *max_sd, fd_set *readfds, int *master, int *clients)
@@ -33,12 +34,12 @@ void	update_maxsd(int *max_sd, fd_set *readfds, int *master, int *clients)
 			*max_sd = sd;
 		i++;
 	}
-
 }
 
 /*
 ** Accept new connection
 */
+
 void	new_conn(int *master, struct sockaddr_in *addr, int *clients)
 {
 	int	new_socket;
@@ -47,11 +48,12 @@ void	new_conn(int *master, struct sockaddr_in *addr, int *clients)
 
 	i = 0;
 	addrlen = 0;
-	if ((new_socket = accept(*master, (struct sockaddr*)addr, 
+	if ((new_socket = accept(*master, (struct sockaddr*)addr,
 				(socklen_t *)&addrlen)) < 0)
 		fatal_error("\n->Failed to accept new connection\n");
 	printf("\nNew Connection ,sockfd %d\n", new_socket);
-	if (send(new_socket, "Hello!", ft_strlen("Hello!"), 0) != ft_strlen("Hello!"))
+	if (send(new_socket, "Hello!", ft_strlen("Hello!"), 0) !=
+			ft_strlen("Hello!"))
 		warning("\n->Message sending failed\n");
 	printf("Welcome Message sent successfully");
 	while (i < MAX_CLIENTS)
@@ -60,16 +62,56 @@ void	new_conn(int *master, struct sockaddr_in *addr, int *clients)
 		{
 			clients[i] = new_socket;
 			printf("\n*New client added successfully at %d\n", i);
-			break;
+			break ;
 		}
 		i++;
 	}
 }
 
 /*
- ** Manage Connections
- */
-void	manage_connections(int *clients, int master_sock, 
+** Handle input output operations
+*/
+
+void handle_io(int *master, struct sockaddr_in *addr, int *clients,
+		fd_set *readfds)
+{
+	int		i;
+	int		sd;
+	int		valread;
+	int		addrlen;
+	char	buffer[1024];
+
+	sd = 0;
+	i = 0;
+	valread = 0;
+	addrlen = 0;
+	ft_bzero(buffer, 1024);
+	while (i < MAX_CLIENTS)
+	{
+		if (FD_ISSET(sd, readfds))
+		{
+			if ((valread = read(sd, buffer, BUFF)) == 0)
+			{
+				//Somebody disconnected
+				getpeername(sd, (struct sockaddr*)addr,
+						(socklen_t*)&addrlen);
+				printf("\n* Host disconnected, ip %s \n",
+						inet_ntoa(addr->sin_addr));
+				close(sd);
+				clients[i] = 0;
+			}
+			else
+			{
+				send(sd, "Lumela", ft_strlen("Lumela"), 0);
+			}
+		}
+	}
+}
+
+/*
+** Manage Connections
+*/
+void	manage_connections(int *clients, int master_sock,
 		struct sockaddr_in addr)
 {
 	int		max_sd;
@@ -81,18 +123,21 @@ void	manage_connections(int *clients, int master_sock,
 	{
 		update_maxsd(&max_sd, &readfds, &master_sock, clients);
 		activity = select(max_sd + 1, &readfds, NULL, NULL, NULL);
-		if ((activity < 0) && (errorno != EINTR))
+		if ((activity < 0) && (errno != EINTR))
 			printf("Select Error");
 		if (FD_ISSET(master_sock, &readfds))
 			new_conn(&master_sock, &addr, clients);
+		else
+			handle_io(&master_sock, &addr, clients, &readfds);
 	}
 }
 
 /*
- ** @params *clients - array of clients sockers
- ** @params master_sock master socket
- ** @params port char port number passed
- */
+** @params *clients - array of clients sockers
+** @params master_sock master socket
+** @params port char port number passed
+*/
+
 void	init_address_ip(int *clients, int master_sock, char *port)
 {
 	struct sockaddr_in address;
@@ -131,7 +176,7 @@ void	init(char **argv)
 	init_address_ip(clients, master_sock, argv[1]);
 }
 
-void	usage()
+void	usage(void)
 {
 	printf("<./server> <PORT>\n");
 }
