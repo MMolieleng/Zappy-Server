@@ -13,8 +13,9 @@
 CLIENT = client
 SERVER = server
 
-FLAGS = -Wall -Werror -Wextra
+FLAGS = -Wall -Werror
 SERVERSRC = src/main.c\
+			src/error.c
 
 LIB	= -L libft/ -lft
 
@@ -23,6 +24,7 @@ INC	+= -I inc/
 
 
 SERVER_OBJ = main.o\
+			 error.o\
 
 all:server
 	make re -C libft
