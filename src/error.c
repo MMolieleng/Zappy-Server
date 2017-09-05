@@ -6,11 +6,16 @@
 /*   By: mmoliele <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2017/09/05 12:53:29 by mmoliele          #+#    #+#             */
-/*   Updated: 2017/09/05 12:54:55 by mmoliele         ###   ########.fr       */
+/*   Updated: 2017/09/05 14:58:20 by mmoliele         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <zappy.h>
+
+void	warning(char *message)
+{
+	printf("\n%s\n", message);
+}
 
 void	fatal_error(char *message)
 {

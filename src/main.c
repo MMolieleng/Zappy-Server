@@ -6,18 +6,93 @@
 /*   By: mmoliele <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2017/09/05 10:12:07 by mmoliele          #+#    #+#             */
-/*   Updated: 2017/09/05 13:05:07 by mmoliele         ###   ########.fr       */
+/*   Updated: 2017/09/05 14:58:28 by mmoliele         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <zappy.h>
 
-/*
-** @params *clients - array of clients sockers
-** @params master_sock master socket
-** @params port char port number passed
-*/
+#define MAX_CLIENTS 30
 
+void	update_maxsd(int *max_sd, fd_set *readfds, int *master, int *clients)
+{
+	int	i;
+	int	sd;
+
+	i = 0;
+	sd = 0;
+	FD_ZERO(readfds);
+	FD_SET(*master, readfds);
+	*max_sd = *master;
+	while (i < MAX_CLIENTS)
+	{
+		sd = clients[i];
+		if (sd > 0)
+			FD_SET(sd, readfds);
+		if (sd > *max_sd)
+			*max_sd = sd;
+		i++;
+	}
+
+}
+
+/*
+** Accept new connection
+*/
+void	new_conn(int *master, struct sockaddr_in *addr, int *clients)
+{
+	int	new_socket;
+	int	addrlen;
+	int	i;
+
+	i = 0;
+	addrlen = 0;
+	if ((new_socket = accept(*master, (struct sockaddr*)addr, 
+				(socklen_t *)&addrlen)) < 0)
+		fatal_error("\n->Failed to accept new connection\n");
+	printf("\nNew Connection ,sockfd %d\n", new_socket);
+	if (send(new_socket, "Hello!", ft_strlen("Hello!"), 0) != ft_strlen("Hello!"))
+		warning("\n->Message sending failed\n");
+	printf("Welcome Message sent successfully");
+	while (i < MAX_CLIENTS)
+	{
+		if (clients[i] == 0)
+		{
+			clients[i] = new_socket;
+			printf("\n*New client added successfully at %d\n", i);
+			break;
+		}
+		i++;
+	}
+}
+
+/*
+ ** Manage Connections
+ */
+void	manage_connections(int *clients, int master_sock, 
+		struct sockaddr_in addr)
+{
+	int		max_sd;
+	int		activity;
+	fd_set	readfds;
+
+	max_sd = 0;
+	while (1)
+	{
+		update_maxsd(&max_sd, &readfds, &master_sock, clients);
+		activity = select(max_sd + 1, &readfds, NULL, NULL, NULL);
+		if ((activity < 0) && (errorno != EINTR))
+			printf("Select Error");
+		if (FD_ISSET(master_sock, &readfds))
+			new_conn(&master_sock, &addr, clients);
+	}
+}
+
+/*
+ ** @params *clients - array of clients sockers
+ ** @params master_sock master socket
+ ** @params port char port number passed
+ */
 void	init_address_ip(int *clients, int master_sock, char *port)
 {
 	struct sockaddr_in address;
@@ -31,7 +106,7 @@ void	init_address_ip(int *clients, int master_sock, char *port)
 	if (listen(master_sock, 3) < 0)
 		fatal_error("Error Listening");
 	printf("Done working...");
-	//manage_connections(clients, master_sock, address);
+	manage_connections(clients, master_sock, address);
 }
 
 void	init(char **argv)
